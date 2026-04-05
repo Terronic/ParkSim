@@ -1,0 +1,1687 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Park-Simulator (PKW) – Realismus Trainer</title>
+  <style>
+    html, body { margin:0; height:100%; background:#0b0f14; color:#e8eef7; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+    #wrap { display:flex; height:100%; }
+    #ui{
+      width: 370px; max-width: 55vw;
+      padding: 14px 14px 10px;
+      background: #0f1722;
+      border-right: 1px solid rgba(255,255,255,0.08);
+      box-sizing: border-box;
+      overflow:auto;
+    }
+    #cwrap { flex:1; display:flex; align-items:center; justify-content:center; }
+    canvas { background:#0b0f14; width: 100%; height: 100%; display:block; touch-action: none; }
+
+    h1 { font-size: 16px; margin: 0 0 8px; }
+    h2 { font-size: 13px; margin: 0 0 8px; opacity:.92; }
+    .card { background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:10px; margin:10px 0; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; }
+    button, .pill {
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color:#e8eef7;
+      padding: 8px 10px;
+      cursor:pointer;
+      font-size: 13px;
+    }
+    button:hover { background: rgba(255,255,255,0.10); }
+    .pill { cursor: default; }
+    label { display:flex; align-items:center; gap:8px; font-size:13px; margin-top:6px; }
+    input[type="checkbox"] { transform: scale(1.1); }
+    .small { font-size:12px; opacity:0.85; line-height:1.35; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: rgba(255,255,255,0.08); padding:2px 6px; border-radius: 6px; border:1px solid rgba(255,255,255,0.12); }
+    .hint { font-weight:800; margin-top:6px; }
+    .warn { color:#ffd27a; }
+    .bad  { color:#ff7a7a; }
+    .good { color:#7affb6; }
+    .muted { opacity:.82; }
+  </style>
+</head>
+<body>
+<div id="wrap">
+  <div id="ui">
+    <h1>🚗 Park-Simulator (PKW) – Realismus Trainer</h1>
+
+    <div class="card">
+      <h2>Übungen</h2>
+      <div class="row">
+        <button id="lvl1">1) Längsparken (Rückwärts) – rechts unten</button>
+        <button id="lvl2">2) Längsparken (Rückwärts) – links unten</button>
+        <button id="lvl3">3) Längsparken (Rückwärts) – rechts oben</button>
+        <button id="lvl4">4) Längsparken (Rückwärts) – links oben</button>
+        <button id="lvl5">5) Boxparken – vorwärts rechts unten</button>
+        <button id="lvl6">6) Boxparken – vorwärts links oben</button>
+        <button id="lvl7">7) Boxparken – rückwärts rechts unten</button>
+        <button id="lvl8">8) Boxparken – rückwärts links oben</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="random">🎲 Random</button>
+        <button id="reset">Reset (R)</button>
+        <button id="pause">Pause</button>
+      </div>
+    </div>
+
+    <div class="card small">
+      <b>Steuerung</b>
+      <div style="margin-top:6px; line-height:1.5">
+        <span class="kbd">W</span>/<span class="kbd">S</span> vor/zurück •
+        <span class="kbd">A</span>/<span class="kbd">D</span> lenken •
+        <span class="kbd">Space</span> Bremse •
+        <span class="kbd">O</span> Overlay
+      </div>
+      <div class="muted" style="margin-top:10px">
+        Mehr Starts, mehr Richtungen und weniger Spielerei – Fokus auf echtes Rangieren.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Lenkrad</h2>
+      <canvas id="wheelCv" width="320" height="250" style="width:100%;height:auto;display:block;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));border:1px solid rgba(255,255,255,0.08);border-radius:16px"></canvas>
+      <div class="small muted" style="margin-top:8px">Realistisch aktiv: keine Auto-Zentrierung. Aus = Lenkrad bleibt stehen, bis du aktiv zurücklenkst.</div>
+    </div>
+
+    <div class="card">
+      <h2>Optionen</h2>
+      <label><input id="overlay" type="checkbox"> Abstands-Overlay</label>
+      <label><input id="selfcenter" type="checkbox"> Automatische Lenkrad-Zentrierung</label>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="pill">Gang: <span id="gear">D</span></div>
+        <div class="pill">Speed: <span id="spd">0.0</span> m/s</div>
+        <div class="pill">Lenk: <span id="steer">0</span>°</div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="pill">Züge: <span id="moves">0</span></div>
+        <div class="pill">Hits: <span id="hits">0</span></div>
+      </div>
+
+      <div class="hint" id="hint">Hinweis: frei rangieren</div>
+      <div class="small" id="subhint" style="margin-top:6px; opacity:.9"></div>
+      <div class="small" id="score" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <div id="cwrap">
+    <canvas id="cv"></canvas>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('cv');
+  const ctx = canvas.getContext('2d');
+  const wheelCanvas = document.getElementById('wheelCv');
+  const wheelCtx = wheelCanvas ? wheelCanvas.getContext('2d') : null;
+
+  // ---------- World ----------
+  const world = { w: 46, h: 26, ppm: 30 };
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width  = Math.floor(rect.width  * devicePixelRatio);
+    canvas.height = Math.floor(rect.height * devicePixelRatio);
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    world.ppm = Math.min(rect.width/world.w, rect.height/world.h);
+  }
+  window.addEventListener('resize', resize);
+
+  // ---------- Helpers ----------
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const TAU = Math.PI*2;
+  const rad2deg = r=>r*180/Math.PI;
+  const deg2rad = d=>d*Math.PI/180;
+  function normalizeAngle(a){ while(a>Math.PI) a-=TAU; while(a<-Math.PI) a+=TAU; return a; }
+  function rotPoint(px, py, ang) {
+    const c = Math.cos(ang), s = Math.sin(ang);
+    return { x: px*c - py*s, y: px*s + py*c };
+  }
+  function toPxX(x){ return x * world.ppm; }
+  function toPxY(y){ return y * world.ppm; }
+
+  // ---------- SAT collision ----------
+  function project(axis, poly) {
+    let min = Infinity, max = -Infinity;
+    for (const p of poly) {
+      const v = p.x*axis.x + p.y*axis.y;
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    return {min, max};
+  }
+  function polyCollide(polyA, polyB) {
+    const polys = [polyA, polyB];
+    for (let k=0;k<2;k++){
+      const poly = polys[k];
+      for (let i=0;i<poly.length;i++){
+        const p1 = poly[i];
+        const p2 = poly[(i+1)%poly.length];
+        const edge = { x: p2.x - p1.x, y: p2.y - p1.y };
+        const n = { x: -edge.y, y: edge.x };
+        const l = Math.hypot(n.x,n.y) || 1;
+        const axis = { x: n.x/l, y: n.y/l };
+        const a = project(axis, polyA);
+        const b = project(axis, polyB);
+        if (a.max < b.min || b.max < a.min) return false;
+      }
+    }
+    return true;
+  }
+  function rectPoly(x,y,w,h) {
+    return [{x:x,y:y},{x:x+w,y:y},{x:x+w,y:y+h},{x:x,y:y+h}];
+  }
+
+  // ---------- Car (Bicycle Model) ----------
+  const car = {
+    // rear axle midpoint
+    x: 8, y: 9, theta: 0,
+    v: 0,
+    steer: 0,
+    steerTarget: 0,
+
+    L: 2.65,
+    W: 1.82,
+    overF: 0.90,
+    overR: 0.85,
+
+    maxSteer: deg2rad(33),
+    steerRate: deg2rad(42),
+    selfCenterRate: deg2rad(18),
+
+    maxFwd: 3.2,
+    maxRev: -1.4,
+    accel: 1.6,
+    brake: 5.6,
+    drag: 1.35,
+
+    wheel: { r:0.28, w:0.18, track:1.55 },
+  };
+
+  function carLen(){ return car.overF + car.L + car.overR; }
+
+  function carBodyCenter() {
+    const len = carLen();
+    const cx = car.x + Math.cos(car.theta)*(car.L/2 + car.overF - len/2);
+    const cy = car.y + Math.sin(car.theta)*(car.L/2 + car.overF - len/2);
+    return {cx, cy, len};
+  }
+
+  function carPoly() {
+    const {cx, cy, len} = carBodyCenter();
+    const hx = len/2, hy = car.W/2;
+    const cornersLocal = [{x:+hx,y:+hy},{x:+hx,y:-hy},{x:-hx,y:-hy},{x:-hx,y:+hy}];
+    return cornersLocal.map(p=>{
+      const r = rotPoint(p.x,p.y,car.theta);
+      return { x: cx + r.x, y: cy + r.y };
+    });
+  }
+
+  // ---------- RNG ----------
+  let seed = 1;
+  function rand(){ seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
+
+  // ---------- UI ----------
+  const gearEl  = document.getElementById('gear');
+  const spdEl   = document.getElementById('spd');
+  const steerEl = document.getElementById('steer');
+  const hitsEl  = document.getElementById('hits');
+  const movesEl = document.getElementById('moves');
+  const hintEl  = document.getElementById('hint');
+  const subhintEl = document.getElementById('subhint');
+  const scoreEl = document.getElementById('score');
+
+  const assistEl = document.getElementById('assist') || { checked:false };
+  const trailEl  = document.getElementById('trail') || { checked:false };
+  const overlayEl= document.getElementById('overlay') || { checked:false };
+  const beepEl   = document.getElementById('beep') || { checked:false };
+  const selfCenterEl = document.getElementById('selfcenter') || { checked:false };
+  const debugEl  = document.getElementById('debug') || { checked:false };
+
+  function setHint(main, sub, cls="") {
+    hintEl.className = "hint " + cls;
+    hintEl.textContent = main;
+    subhintEl.textContent = sub || "";
+  }
+
+  // ---------- Levels / Scenario ----------
+  let level = 1;
+  const bounds = { x: 1.2, y: 2.0, w: 43.6, h: 22.0 };
+
+  // Parking lot geometry (box bays at bottom)
+  const lot = {
+    rowY: 16.0,          // start of bays (top line of bays)
+    bayDepth: 5.3,       // realistische Parkbox-Tiefe (vorwärts/rückwärts)
+    bayW: 2.65,          // realistische Parkbox-Breite
+    bayGap: 0.16,        // little space between painted lines visually
+    laneY: 9.0,          // driving lane y (car starts here)
+    rowX0: 6.0,          // left start
+    bays: 10,            // number of bays drawn
+  };
+
+  // runtime
+  let obstacles = [];     // {x,y,w,h, kind:'car'|'wall', theta?}
+  let target = null;      // {x,y,w,h, theta, mode:'box'|'parallel', ...}
+  let assistStep = 0;
+  let targetSide = "right"; // which way to steer into box (usually "right")
+  let snap = {};          // scenario reference lines for help
+  let parallelCfg = null;
+  let boxCfg = null;
+
+  function resetScenario() {
+    obstacles = [];
+    target = null;
+    assistStep = 0;
+    snap = {};
+    parallelCfg = null;
+    boxCfg = null;
+  }
+
+  function populateParkingRow(targetIndex, keepNeighbors=true) {
+    const paints = ["#f97316", "#22c55e", "#a855f7", "#38bdf8", "#facc15", "#ef4444", "#94a3b8"];
+    const carW = 1.95, carL = 4.70;
+    const rowY = boxCfg?.rowY ?? lot.rowY;
+    for (let i=0;i<lot.bays;i++) {
+      if (i===targetIndex) continue;
+      if (keepNeighbors && (i===targetIndex-1 || i===targetIndex+1)) {
+        // neighbors always occupied for realistic squeeze
+      } else if (rand() < 0.28) {
+        continue;
+      }
+      const bx = lot.rowX0 + i*lot.bayW + (lot.bayW - carW)/2;
+      const by = rowY + (lot.bayDepth - carL) / 2;
+      obstacles.push({ x: bx, y: by, w: carW, h: carL, kind:"car", paint: paints[i % paints.length] });
+    }
+  }
+
+  function targetOverlapsObstacle() {
+    if (!target) return false;
+    const targetPoly = rectPoly(target.x, target.y, target.w, target.h);
+    for (const o of obstacles) {
+      const oPoly = rectPoly(o.x, o.y, o.w, o.h);
+      if (polyCollide(targetPoly, oPoly)) return true;
+    }
+    return false;
+  }
+
+  function clearTargetZone(pad=0.10) {
+    if (!target) return;
+    const tx = target.x - pad;
+    const ty = target.y - pad;
+    const tw = target.w + pad*2;
+    const th = target.h + pad*2;
+    obstacles = obstacles.filter(o => {
+      return (o.x + o.w < tx || o.x > tx + tw || o.y + o.h < ty || o.y > ty + th);
+    });
+  }
+
+
+  function addParkingLotScenery() {
+    const rowY = boxCfg?.rowY ?? lot.rowY;
+    const isTop = (boxCfg?.edge === "top");
+    const islandY = isTop ? rowY + lot.bayDepth + 2.4 : rowY - 1.1;
+    obstacles.push(
+      { x: 3.0, y: islandY, w: 2.4, h: 2.1, kind:"island", paint:"#1f3b2f" },
+      { x: 34.6, y: islandY, w: 2.6, h: 2.1, kind:"island", paint:"#1f3b2f" }
+    );
+  }
+
+  function parallelSlotBlocked() {
+    if (!target) return false;
+    return obstacles.some(o => !(o.x + o.w < target.x || o.x > target.x + target.w || o.y + o.h < target.y || o.y > target.y + target.h));
+  }
+
+  function setupBoxScenario({ bayIndex, reverse=true, approach="right", freeBox=false, edge="bottom" }) {
+    resetScenario();
+    const rowY = edge === "top" ? 4.2 : lot.rowY;
+    boxCfg = { edge, rowY };
+    const xLeft = lot.rowX0 + bayIndex * lot.bayW;
+    target = { x: xLeft + 0.15, y: rowY + 0.25, w: lot.bayW - 0.30, h: lot.bayDepth - 0.55, theta: Math.PI/2, mode:"box" };
+    if (!freeBox) populateParkingRow(bayIndex, true);
+    else populateParkingRow(bayIndex, false);
+    addParkingLotScenery();
+    clearTargetZone(0.12);
+
+    const laneBase = edge === "top" ? rowY + lot.bayDepth + 8.8 : rowY - 8.8;
+    const startY = laneBase + (rand()*0.55 - 0.28);
+    if (reverse) {
+      const passDist = 8.2 + rand()*1.8;
+      if (approach === "right") {
+        car.theta = 0;
+        car.x = Math.max(bounds.x + 2.2, xLeft - passDist);
+      } else {
+        car.theta = Math.PI;
+        car.x = Math.min(bounds.x + bounds.w - 2.2, xLeft + lot.bayW + passDist);
+      }
+      car.y = startY;
+    } else {
+      const passDist = 7.2 + rand()*1.6;
+      car.theta = approach === "right" ? 0 : Math.PI;
+      car.x = approach === "right"
+        ? Math.max(bounds.x + 4.2, xLeft - passDist)
+        : Math.min(bounds.x + bounds.w - 4.2, xLeft + lot.bayW + passDist);
+      car.y = startY + (rand()*0.28 - 0.14);
+    }
+    car.v = 0; car.steer = 0; car.steerTarget = 0;
+    targetSide = approach;
+  }
+
+  function buildLevel1_boxReverseRight() {
+    const bayIndex = 3 + Math.floor(rand()*3);
+    setupBoxScenario({ bayIndex, reverse:true, approach:"right", freeBox:false });
+  }
+
+  function buildLevel2_boxReverseLeft() {
+    const bayIndex = 4 + Math.floor(rand()*3);
+    setupBoxScenario({ bayIndex, reverse:true, approach:"left", freeBox:false });
+  }
+
+  function addParallelStreet(cfg) {
+    const { parkedY, parkedH, parkedW, gapStart, gapLen, roadY0, roadY1, edge } = cfg;
+    const paints = ["#facc15", "#ef4444", "#38bdf8", "#22c55e", "#a855f7", "#94a3b8"];
+
+    function addParkedCar(x, paint, w=parkedW) {
+      obstacles.push({ x, y: parkedY, w, h: parkedH, kind:"car", paint });
+    }
+
+    // cars around the gap only, with guaranteed clearance
+    addParkedCar(gapStart - parkedW - 0.45, paints[0]);
+    addParkedCar(gapStart - (parkedW*2) - 1.05, paints[1]);
+    addParkedCar(gapStart + gapLen + 0.45, paints[2]);
+    addParkedCar(gapStart + gapLen + parkedW + 1.05, paints[3]);
+    if (gapStart - (parkedW*3) - 1.65 > bounds.x + 0.6) addParkedCar(gapStart - (parkedW*3) - 1.65, paints[4], 4.4);
+    if (gapStart + gapLen + (parkedW*2) + 1.65 < bounds.x + bounds.w - 0.6) addParkedCar(gapStart + gapLen + (parkedW*2) + 1.65, paints[5], 4.3);
+
+  }
+
+  function setupParallelScenario(side="right", edgeOverride=null) {
+    resetScenario();
+
+    const edge = edgeOverride || (side === "right" ? "bottom" : "top");
+    const gapLen = 8.0;
+    const parkedH = 2.15, parkedW = 4.75;
+    const gapStart = 17.8 + (rand()*3.6 - 1.8);
+
+    let curbY, roadY0, roadY1, parkedY, spawnY;
+    const desiredSideGap = 1.0; // ca. 1 m Seitenabstand beim Vorbeifahren
+
+    if (edge === "bottom") {
+      // Rechter Fahrbahnrand unten: Anfahrt von links nach rechts, dann rechts rückwärts einparken.
+      curbY = 21.6 + [0, -0.25, -0.5][Math.floor(rand()*3)];
+      roadY0 = 8.6;
+      roadY1 = curbY - 0.35;
+      parkedY = curbY - 0.25 - parkedH;
+      // Fahrzeug soll beim Vorbeifahren fast parallel zur Reihe laufen, mit rund 1 m Abstand zur parkenden Reihe.
+      spawnY = parkedY - desiredSideGap - car.W;
+      spawnY += (rand()*0.20 - 0.10);
+      spawnY = clamp(spawnY, roadY0 + 0.95, roadY1 - 0.95);
+    } else {
+      // Linker Fahrbahnrand oben: Anfahrt von rechts nach links, dann links rückwärts einparken.
+      curbY = 4.4 + [0, 0.25, 0.5][Math.floor(rand()*3)];
+      roadY0 = curbY + 0.35;
+      roadY1 = 17.4;
+      parkedY = curbY + 0.25;
+      // Spiegelbildlich: ca. 1 m Abstand zwischen linker Fahrzeugseite und parkender Reihe.
+      spawnY = parkedY + parkedH + desiredSideGap + car.W/2;
+      spawnY += (rand()*0.20 - 0.10);
+      spawnY = clamp(spawnY, roadY0 + 0.95, roadY1 - 0.95);
+    }
+
+    parallelCfg = { curbY, parkedY, parkedH, parkedW, gapStart, gapLen, sidewalkH: 1.35, roadY0, roadY1, edge, side };
+    addParallelStreet(parallelCfg);
+
+    target = { x: gapStart + 0.18, y: parkedY - 0.09, w: gapLen - 0.36, h: 2.34, theta: 0, mode:"parallel", curbY };
+    clearTargetZone(0.22);
+    if (parallelSlotBlocked()) clearTargetZone(0.35);
+
+    if (edge === "bottom") {
+      if (side === "right") {
+        // unten: Fahrtrichtung links -> rechts, Parken rechts rückwärts
+        car.x = Math.max(bounds.x + 5.0, gapStart - 7.8 - rand()*2.6);
+        car.y = spawnY;
+        car.theta = 0;
+      } else {
+        // unten gespiegelt: Fahrtrichtung rechts -> links, Parken links rückwärts
+        car.x = Math.min(bounds.x + bounds.w - 5.0, gapStart + gapLen + 7.8 + rand()*2.6);
+        car.y = spawnY;
+        car.theta = Math.PI;
+      }
+    } else {
+      if (side === "right") {
+        // oben gespiegelt: Fahrtrichtung rechts -> links, Parken rechts rückwärts
+        car.x = Math.min(bounds.x + bounds.w - 5.0, gapStart + gapLen + 7.8 + rand()*2.6);
+        car.y = spawnY;
+        car.theta = Math.PI;
+      } else {
+        // oben: Fahrtrichtung links -> rechts, Parken links rückwärts
+        car.x = Math.max(bounds.x + 5.0, gapStart - 7.8 - rand()*2.6);
+        car.y = spawnY;
+        car.theta = 0;
+      }
+    }
+    car.v=0; car.steer=0; car.steerTarget=0;
+    targetSide = side;
+    snap.curbY = curbY;
+  }
+
+  function buildLevel1_parallelRightBottom() { setupParallelScenario("right", "bottom"); }
+  function buildLevel2_parallelLeftBottom() { setupParallelScenario("left", "bottom"); }
+  function buildLevel3_parallelRightTop() { setupParallelScenario("right", "top"); }
+  function buildLevel4_parallelLeftTop() { setupParallelScenario("left", "top"); }
+  function buildLevel5_boxForwardRight() {
+    const bayIndex = 5 + Math.floor(rand()*3);
+    setupBoxScenario({ bayIndex, reverse:false, approach:"right", freeBox:false, edge:"bottom" });
+  }
+  function buildLevel6_boxForwardLeft() {
+    const bayIndex = 5 + Math.floor(rand()*3);
+    setupBoxScenario({ bayIndex, reverse:false, approach:"left", freeBox:false, edge:"top" });
+  }
+  function buildLevel7_boxReverseRight() {
+    const bayIndex = 3 + Math.floor(rand()*3);
+    setupBoxScenario({ bayIndex, reverse:true, approach:"right", freeBox:false, edge:"bottom" });
+  }
+  function buildLevel8_boxReverseLeft() {
+    const bayIndex = 4 + Math.floor(rand()*3);
+    setupBoxScenario({ bayIndex, reverse:true, approach:"left", freeBox:false, edge:"top" });
+  }
+
+  function buildScenario() {
+    if (level===1) buildLevel1_parallelRightBottom();
+    if (level===2) buildLevel2_parallelLeftBottom();
+    if (level===3) buildLevel3_parallelRightTop();
+    if (level===4) buildLevel4_parallelLeftTop();
+    if (level===5) buildLevel5_boxForwardRight();
+    if (level===6) buildLevel6_boxForwardLeft();
+    if (level===7) buildLevel7_boxReverseRight();
+    if (level===8) buildLevel8_boxReverseLeft();
+  }
+
+  // ---------- Game state ----------
+  let paused = false;
+  let collisions = 0;
+  let moves = 0;
+  let lastGear = "D";
+  let finished = false;
+  let inTargetTime = 0;
+  let gearDelay = 0;
+  const requiredHold = 1.1;
+  let startTime = performance.now();
+  let wheelSpin = 0;
+
+  function reset(lvl=level, keepSeed=false) {
+    level = lvl;
+    if (!keepSeed) seed = (Date.now()>>>0) ^ (lvl*2654435761);
+    buildScenario();
+    collisions = 0; moves = 0; lastGear = "D";
+    finished = false; inTargetTime = 0; assistStep = 0; gearDelay = 0;
+    startTime = performance.now();
+    setHint("Hinweis: frei rangieren", "Unterschiedliche Startpositionen und Parkrichtungen aktiv.");
+  }
+
+  // ---------- Buttons ----------
+  document.getElementById('lvl1').onclick = ()=>reset(1);
+  document.getElementById('lvl2').onclick = ()=>reset(2);
+  document.getElementById('lvl3').onclick = ()=>reset(3);
+  document.getElementById('lvl4').onclick = ()=>reset(4);
+  document.getElementById('lvl5').onclick = ()=>reset(5);
+  document.getElementById('lvl6').onclick = ()=>reset(6);
+  document.getElementById('lvl7').onclick = ()=>reset(7);
+  document.getElementById('lvl8').onclick = ()=>reset(8);
+
+  document.getElementById('random').onclick = ()=>{
+    const randomLevel = 1 + Math.floor(rand()*8);
+    seed = (Date.now()>>>0) ^ (randomLevel*2654435761);
+    reset(randomLevel,true);
+  };
+  document.getElementById('reset').onclick = ()=>reset(level,true);
+  document.getElementById('pause').onclick = ()=>paused = !paused;
+
+  // ---------- Input ----------
+  const keys = new Set();
+  window.addEventListener('keydown', (e) => {
+    if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+    const k = e.key.toLowerCase();
+    keys.add(k);
+
+    if (k==='r') reset(level,true);
+    if (k==='o') overlayEl.checked = !overlayEl.checked;
+  });
+  window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+
+  // Touch/Pointer: left half steer (horizontal), right half top forward, bottom reverse
+  let touch = { active:false, x:0, y:0 };
+  canvas.addEventListener('pointerdown', (e)=>{ touch.active=true; touch.x=e.clientX; touch.y=e.clientY; });
+  canvas.addEventListener('pointermove', (e)=>{ if(!touch.active) return; touch.x=e.clientX; touch.y=e.clientY; });
+  canvas.addEventListener('pointerup', ()=>{ touch.active=false; });
+  canvas.addEventListener('pointercancel', ()=>{ touch.active=false; });
+
+  // ---------- Audio beep ----------
+  let audioCtx = null;
+  function beep(freq=880, dur=0.03, vol=0.05){
+    if (!beepEl.checked) return;
+    try {
+      audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+      g.gain.value = vol;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      o.stop(audioCtx.currentTime + dur);
+    } catch {}
+  }
+
+  // ---------- Distances (overlay) ----------
+  function distanceInDirection(dirAngle, maxDist=7.0) {
+    const {cx, cy} = carBodyCenter();
+    const dx = Math.cos(dirAngle), dy = Math.sin(dirAngle);
+    const step = 0.10;
+    for (let d=0; d<=maxDist; d+=step) {
+      const px = cx + dx*d;
+      const py = cy + dy*d;
+
+      if (px < bounds.x || px > bounds.x+bounds.w || py < bounds.y || py > bounds.y+bounds.h) return d;
+
+      for (const o of obstacles) {
+        if (px>=o.x && px<=o.x+o.w && py>=o.y && py<=o.y+o.h) return d;
+      }
+    }
+    return maxDist;
+  }
+
+  // ---------- Collision ----------
+  function isColliding() {
+    const p = carPoly();
+    for (const c of p) {
+      if (c.x < bounds.x || c.x > bounds.x+bounds.w || c.y < bounds.y || c.y > bounds.y+bounds.h) return true;
+    }
+    if (target && target.mode === "parallel" && parallelCfg) {
+      for (const c of p) {
+        if (parallelCfg.edge === "bottom") {
+          if (c.y > parallelCfg.curbY - 0.10) return true;
+        } else {
+          if (c.y < parallelCfg.curbY + 0.10) return true;
+        }
+      }
+    }
+    for (const o of obstacles) {
+      const oPoly = rectPoly(o.x,o.y,o.w,o.h);
+      if (polyCollide(p, oPoly)) return true;
+    }
+    return false;
+  }
+
+  // ---------- Target / success ----------
+  function carInsideTarget() {
+    if (!target) return false;
+    const p = carPoly();
+    for (const c of p) {
+      if (c.x < target.x || c.x > target.x+target.w || c.y < target.y || c.y > target.y+target.h) return false;
+    }
+    // angle tolerance:
+    const angErr = Math.abs(normalizeAngle(car.theta - target.theta));
+    if (target.mode==="box") {
+      // in box: allow a bit more angle at stop
+      if (angErr > deg2rad(12)) return false;
+    } else {
+      if (angErr > deg2rad(10)) return false;
+    }
+    if (Math.abs(car.v) > 0.25) return false;
+    return true;
+  }
+
+  function scoreDetails() {
+    const t = (performance.now() - startTime)/1000;
+    let angErrDeg = 0, centerErr = 0;
+    if (target) {
+      angErrDeg = Math.abs(rad2deg(normalizeAngle(car.theta - target.theta)));
+      const rear = { x: car.x, y: car.y };
+      const c = { x: target.x + target.w/2, y: target.y + target.h/2 };
+      centerErr = Math.hypot(c.x - rear.x, c.y - rear.y);
+    }
+    let total = Math.round(1200 - t*7 - moves*70 - collisions*140 - angErrDeg*9 - centerErr*55);
+    total = Math.max(0, total);
+    const stars = total>=900 ? 3 : total>=650 ? 2 : total>=380 ? 1 : 0;
+    return { total, stars, time:t, angErrDeg, centerErr };
+  }
+
+  // ---------- Parkhilfe (wirklich wie Bild) ----------
+  function assistStepwise() {
+    if (!target) return { main:"–", sub:"", cls:"" };
+
+    // Level 1 + Level 4: reverse into a box
+    if ((level===1 || level===4) && target.mode==="box") {
+      // Reference: align rear axle with left line (snap.alignX)
+      const rearX = car.x;
+      const rearY = car.y;
+
+      // Step 0: Positionieren: rear axle exactly on align line
+      if (assistStep===0) {
+        const dx = rearX - snap.alignX;
+        if (Math.abs(dx) > 0.15) {
+          const dir = dx < 0 ? "ein Stück vor" : "ein Stück zurück";
+          return {
+            main: "Schritt 1: Positionieren (wie Bild 1)",
+            sub: `Bring deine Hinterachse auf die Linie der Parklücke (gelbe Linie). Jetzt: ${dir}.`,
+            cls: "warn"
+          };
+        }
+        assistStep = 1;
+      }
+
+      // Step 1: Rückwärts + Volleinschlag Richtung Box (rechts)
+      if (assistStep===1) {
+        const wantTheta = snap.diagTheta; // negative = nose turns downwards/right with our coord
+        const needsTurn = (car.theta > wantTheta);
+        if (needsTurn) {
+          return {
+            main: "Schritt 2: Rückwärts + Volleinschlag rechts",
+            sub: "Lenke komplett nach rechts und rolle rückwärts, bis du schräg in die Lücke eindrehtst.",
+            cls: ""
+          };
+        }
+        assistStep = 2;
+      }
+
+      // Step 2: Lenkrad zurück Richtung gerade (damit er nicht überzieht)
+      if (assistStep===2) {
+        if (Math.abs(car.steer) > deg2rad(4)) {
+          return {
+            main: "Schritt 3: Lenkrad zurück Richtung gerade",
+            sub: "Während du rückwärts weiter rollst: Lenkrad zügig auf ‘gerade’ zurücknehmen.",
+            cls: ""
+          };
+        }
+        assistStep = 3;
+      }
+
+      // Step 3: Gerade rückwärts bis im Feld
+      if (assistStep===3) {
+        if (rearY < snap.inBoxY) {
+          return {
+            main: "Schritt 4: Gerade rückwärts in die Box",
+            sub: "Räder gerade, langsam reinrollen. Wenn du mittig bist: anhalten.",
+            cls: ""
+          };
+        }
+        assistStep = 4;
+      }
+
+      // Step 4: Feinkorrektur
+      const sc = scoreDetails();
+      const cls = (sc.centerErr < 0.9 && sc.angErrDeg < 8) ? "good" : "";
+      return {
+        main: "Fein korrigieren & mittig werden",
+        sub: "Kleine Züge vor/zurück, wenig Lenken. Ziel: komplett drin und sauber gerade.",
+        cls
+      };
+    }
+
+    // Parallel (Level 2) – nur simple coaching
+    if (level===2 && target.mode==="parallel") {
+      return { main:"Parallel: erst positionieren, dann rückwärts eindrehen.", sub:"Wenn du willst: ich bau die Parallel-Hilfe genauso detailgenau wie bei Box.", cls:"warn" };
+    }
+
+    return { main:"–", sub:"", cls:"" };
+  }
+
+  // ---------- Physics update ----------
+  function update(dt) {
+    // Inputs
+    let steerIn = 0;
+    if (keys.has('a')) steerIn -= 1;
+    if (keys.has('d')) steerIn += 1;
+
+    let fwd = keys.has('w') ? 1 : 0;
+    let rev = keys.has('s') ? 1 : 0;
+    const hardBrake = keys.has(' ') ? 1 : 0;
+
+    if (touch.active) {
+      const rect = canvas.getBoundingClientRect();
+      const nx = (touch.x - rect.left)/rect.width;
+      const ny = (touch.y - rect.top)/rect.height;
+      steerIn = clamp((nx - 0.33)*3.0, -1, 1);
+      fwd = (nx > 0.55 && ny < 0.45) ? 1 : 0;
+      rev = (nx > 0.55 && ny > 0.55) ? 1 : 0;
+    }
+
+    // Steering
+    // Important: with self-centering OFF, releasing A/D must HOLD the current steering angle.
+    // Only when self-centering is ON should the steering return toward zero automatically.
+    const steerSpeedFactor = Math.abs(car.v) < 0.3 ? 0.42 : 1.0; // steering in standstill is slower / heavier
+    if (Math.abs(steerIn) > 0.01) {
+      car.steerTarget = steerIn * car.maxSteer;
+      const sd = car.steerTarget - car.steer;
+      const maxStep = car.steerRate * dt * steerSpeedFactor;
+      car.steer += clamp(sd, -maxStep, +maxStep);
+    } else if (selfCenterEl.checked) {
+      car.steerTarget = 0;
+      const maxCenter = car.selfCenterRate * dt * Math.max(0.65, steerSpeedFactor);
+      car.steer += clamp(-car.steer, -maxCenter, +maxCenter);
+    } else {
+      // realistic/manual mode: keep current wheel position until the driver actively counter-steers
+      car.steerTarget = car.steer;
+    }
+
+    // Gear by intent
+    let desiredGear = lastGear;
+    if (fwd && !rev) desiredGear = "D";
+    if (rev && !fwd) desiredGear = "R";
+
+    gearDelay = Math.max(0, gearDelay - dt);
+    if (desiredGear !== lastGear && gearDelay <= 0) {
+      moves += 1;
+      lastGear = desiredGear;
+      gearDelay = 0.22; // small pause while changing between D and R
+    }
+
+    // accel
+    let a = 0;
+    const shiftLock = gearDelay > 0;
+    if (gear==="D") {
+      if (fwd && !shiftLock) a += car.accel;
+      if (rev) a -= car.brake;
+    } else {
+      if (rev && !shiftLock) a -= car.accel;
+      if (fwd) a += car.brake;
+    }
+    if (hardBrake) a += (car.v>0 ? -car.brake*1.3 : car.brake*1.3);
+    a += -car.drag * car.v;
+
+    car.v += a*dt;
+    car.v = clamp(car.v, car.maxRev, car.maxFwd);
+
+    if (Math.abs(car.v) > 0.03) wheelSpin += (car.v / car.wheel.r) * dt;
+
+    // bicycle model
+    const rotationBoost = Math.abs(car.v) < 1.0 ? 1.22 : 1.0;
+    const omega = (car.v / car.L) * Math.tan(car.steer) * rotationBoost;
+
+    const old = { x:car.x, y:car.y, theta:car.theta, v:car.v };
+    car.theta = normalizeAngle(car.theta + omega*dt);
+    car.x += car.v * Math.cos(car.theta) * dt;
+    car.y += car.v * Math.sin(car.theta) * dt;
+
+    if (isColliding()) {
+      collisions += 1;
+      car.x = old.x; car.y = old.y; car.theta = old.theta;
+      car.v = -old.v * 0.2;
+      beep(520, 0.025, 0.04);
+    }
+
+    // overlay beep
+    if (beepEl.checked && overlayEl.checked) {
+      const dF = distanceInDirection(car.theta, 4.0);
+      if (dF < 0.7 && Math.abs(car.v) > 0.2) beep(880, 0.02, 0.03);
+    }
+
+    // success
+    if (!finished && carInsideTarget()) {
+      inTargetTime += dt;
+      if (inTargetTime >= requiredHold) finished = true;
+    } else {
+      inTargetTime = 0;
+    }
+
+    // hint text
+    const scenarioHint = {
+      1: "Rückwärts rechts in die Box – enger zwischen Autos.",
+      2: "Rückwärts links in die Box – gleiche Aufgabe gespiegelt.",
+      3: "Parallel rechts – Straßencharakter mit Bordstein.",
+      4: "Parallel links – gespiegelt mit realistischeren Starts.",
+      5: "Vorwärts in die Box – Parkplatzcharakter mit Fahrgasse.",
+      6: "Freie Rückwärts-Box – Anfahrt und Startseite variieren."
+    };
+    setHint("Hinweis: " + (scenarioHint[level] || "frei rangieren"), "Sandbox bleibt frei, aber Anfahrten und Umgebung sind realistischer gebaut.");
+
+    // UI
+    gearEl.textContent = lastGear;
+    spdEl.textContent = car.v.toFixed(1);
+    steerEl.textContent = Math.round(rad2deg(car.steer));
+    hitsEl.textContent = collisions;
+    movesEl.textContent = moves;
+
+    const sc = scoreDetails();
+    scoreEl.innerHTML = finished
+      ? `<div style="color:#7affb6"><b>✅ Geschafft!</b> Score: <b>${sc.total}</b> (${sc.stars}★)</div>
+         <div class="small">Zeit: ${sc.time.toFixed(1)}s · Züge: ${moves} · Hits: ${collisions}</div>
+         <div class="small">Winkel-Fehler: ${sc.angErrDeg.toFixed(1)}° · Mitte: ${sc.centerErr.toFixed(2)}m</div>`
+      : `<div class="small">Ziel halten: ${(requiredHold - inTargetTime).toFixed(1)}s</div>
+         <div class="small muted">Winkel-Fehler: ${sc.angErrDeg.toFixed(1)}° · Mitte: ${sc.centerErr.toFixed(2)}m</div>`;
+  }
+
+  // ---------- Drawing ----------
+  function roundRect(ctx, x, y, w, h, r) {
+    const rr = Math.min(r, w/2, h/2);
+    ctx.moveTo(x+rr, y);
+    ctx.arcTo(x+w, y, x+w, y+h, rr);
+    ctx.arcTo(x+w, y+h, x, y+h, rr);
+    ctx.arcTo(x, y+h, x, y, rr);
+    ctx.arcTo(x, y, x+w, y, rr);
+    ctx.closePath();
+  }
+
+  function drawAsphalt() {
+    const rect = canvas.getBoundingClientRect();
+    ctx.save();
+    ctx.fillStyle = "#0b0f14";
+    ctx.fillRect(0,0,rect.width,rect.height);
+
+    const g = ctx.createLinearGradient(0,0,rect.width,rect.height);
+    g.addColorStop(0,"rgba(255,255,255,0.05)");
+    g.addColorStop(0.45,"rgba(255,255,255,0.025)");
+    g.addColorStop(1,"rgba(255,255,255,0.015)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,rect.width,rect.height);
+
+    // subtle asphalt texture
+    ctx.fillStyle = "rgba(255,255,255,0.028)";
+    for (let i=0;i<140;i++) {
+      const x = (i * 137.31) % rect.width;
+      const y = (i * 89.17) % rect.height;
+      ctx.fillRect(x, y, 1.3, 1.3);
+    }
+
+    ctx.strokeStyle = "rgba(255,255,255,0.035)";
+    ctx.lineWidth = 1;
+    for (let i=0;i<8;i++) {
+      const y = rect.height * (0.12 + i*0.11);
+      ctx.beginPath();
+      ctx.moveTo(rect.width*0.04, y);
+      ctx.lineTo(rect.width*0.96, y + ((i%2===0)?10:-10));
+      ctx.stroke();
+    }
+
+    // subtle Rakowski watermark in the top-left corner
+    ctx.save();
+    ctx.translate(rect.width * 0.08, rect.height * 0.10);
+    ctx.rotate(-0.12);
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#ffffff";
+    ctx.globalAlpha = 0.05;
+    ctx.font = `800 ${Math.round(Math.min(rect.width, rect.height) * 0.06)}px system-ui`;
+    ctx.fillText("RAKOWSKI", 0, 0);
+    ctx.globalAlpha = 0.032;
+    ctx.font = `700 ${Math.round(Math.min(rect.width, rect.height) * 0.022)}px system-ui`;
+    ctx.fillText("FAHRSCHULE", 2, rect.height * 0.028);
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  function drawBounds() {
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.03)";
+    ctx.fillRect(toPxX(bounds.x), toPxY(bounds.y), toPxX(bounds.w), toPxY(bounds.h));
+    ctx.strokeStyle = "rgba(255,255,255,0.20)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(toPxX(bounds.x), toPxY(bounds.y), toPxX(bounds.w), toPxY(bounds.h));
+    ctx.restore();
+  }
+
+  function drawParallelStreetScene() {
+    if (!target || target.mode !== "parallel" || !parallelCfg) return;
+    const { curbY, sidewalkH, roadY0, roadY1, edge } = parallelCfg;
+    const pxBoundsX = toPxX(bounds.x);
+    const pxBoundsW = toPxX(bounds.w);
+    const midY = (roadY0 + roadY1) / 2;
+    ctx.save();
+
+    // road lane with a bit more character
+    ctx.fillStyle = "rgba(255,255,255,0.024)";
+    ctx.fillRect(pxBoundsX, toPxY(roadY0), pxBoundsW, toPxY(roadY1 - roadY0));
+
+    ctx.fillStyle = "rgba(0,0,0,0.05)";
+    for (let i = 0; i < 10; i++) {
+      const blotX = bounds.x + 2.5 + i * 4.1;
+      const blotY = roadY0 + 0.5 + (i % 3) * 0.9;
+      ctx.fillRect(toPxX(blotX), toPxY(blotY), toPxX(1.4), toPxY(0.22));
+    }
+
+    // dashed center line for street character
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    for (let x = bounds.x + 2.0; x < bounds.x + bounds.w - 1.5; x += 3.6) {
+      ctx.fillRect(toPxX(x), toPxY(midY - 0.06), toPxX(1.7), toPxY(0.12));
+    }
+
+    if (edge === "bottom") {
+      // curb with visible depth: bright top, darker face
+      ctx.fillStyle = "rgba(222,226,232,0.72)";
+      ctx.fillRect(pxBoundsX, toPxY(curbY - 0.10), pxBoundsW, toPxY(0.10));
+      ctx.fillStyle = "rgba(84,90,98,0.88)";
+      ctx.fillRect(pxBoundsX, toPxY(curbY), pxBoundsW, toPxY(0.18));
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      for (let x = bounds.x + 0.2; x < bounds.x + bounds.w; x += 1.08) {
+        ctx.fillRect(toPxX(x), toPxY(curbY - 0.02), toPxX(0.74), toPxY(0.04));
+      }
+
+      // sidewalk below the curb with slab structure
+      ctx.fillStyle = "rgba(196, 202, 210, 0.16)";
+      ctx.fillRect(pxBoundsX, toPxY(curbY + 0.18), pxBoundsW, toPxY(bounds.y + bounds.h - (curbY + 0.18)));
+
+      ctx.strokeStyle = "rgba(255,255,255,0.055)";
+      ctx.lineWidth = 1;
+      for (let x = bounds.x + 0.8; x < bounds.x + bounds.w; x += 3.2) {
+        ctx.beginPath();
+        ctx.moveTo(toPxX(x), toPxY(curbY + 0.18));
+        ctx.lineTo(toPxX(x), toPxY(bounds.y + bounds.h));
+        ctx.stroke();
+      }
+      for (let y = curbY + 0.85; y < bounds.y + bounds.h; y += 0.9) {
+        ctx.beginPath();
+        ctx.moveTo(pxBoundsX, toPxY(y));
+        ctx.lineTo(pxBoundsX + pxBoundsW, toPxY(y));
+        ctx.stroke();
+      }
+
+      // driveway cutout
+      ctx.fillStyle = "rgba(150,155,164,0.22)";
+      ctx.fillRect(toPxX(bounds.x + 30.5), toPxY(curbY - 0.02), toPxX(3.4), toPxY(0.28));
+    } else {
+      // sidewalk above the curb with slab structure
+      ctx.fillStyle = "rgba(196, 202, 210, 0.16)";
+      ctx.fillRect(pxBoundsX, toPxY(bounds.y), pxBoundsW, toPxY(curbY - bounds.y - 0.18));
+
+      ctx.strokeStyle = "rgba(255,255,255,0.055)";
+      ctx.lineWidth = 1;
+      for (let x = bounds.x + 0.8; x < bounds.x + bounds.w; x += 3.2) {
+        ctx.beginPath();
+        ctx.moveTo(toPxX(x), toPxY(bounds.y));
+        ctx.lineTo(toPxX(x), toPxY(curbY - 0.18));
+        ctx.stroke();
+      }
+      for (let y = bounds.y + 0.95; y < curbY - 0.25; y += 0.9) {
+        ctx.beginPath();
+        ctx.moveTo(pxBoundsX, toPxY(y));
+        ctx.lineTo(pxBoundsX + pxBoundsW, toPxY(y));
+        ctx.stroke();
+      }
+
+      // curb with visible depth: bright top, darker face
+      ctx.fillStyle = "rgba(222,226,232,0.72)";
+      ctx.fillRect(pxBoundsX, toPxY(curbY - 0.10), pxBoundsW, toPxY(0.10));
+      ctx.fillStyle = "rgba(84,90,98,0.88)";
+      ctx.fillRect(pxBoundsX, toPxY(curbY), pxBoundsW, toPxY(0.18));
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      for (let x = bounds.x + 0.2; x < bounds.x + bounds.w; x += 1.08) {
+        ctx.fillRect(toPxX(x), toPxY(curbY - 0.02), toPxX(0.74), toPxY(0.04));
+      }
+
+      // driveway cutout
+      ctx.fillStyle = "rgba(150,155,164,0.22)";
+      ctx.fillRect(toPxX(bounds.x + 30.5), toPxY(curbY - 0.02), toPxX(3.4), toPxY(0.28));
+    }
+    ctx.restore();
+  }
+
+  function drawParkingRow() {
+    if (!target || target.mode !== "box") return;
+    const yTop = boxCfg?.rowY ?? lot.rowY;
+    const yBot = yTop + lot.bayDepth;
+    const x0 = lot.rowX0;
+    const x1 = lot.rowX0 + lot.bays*lot.bayW;
+    const isTop = boxCfg?.edge === "top";
+
+    ctx.save();
+    // driving lane / parking lot surface
+    ctx.fillStyle = "rgba(255,255,255,0.022)";
+    if (isTop) {
+      ctx.fillRect(toPxX(bounds.x), toPxY(yBot + 0.4), toPxX(bounds.w), toPxY(bounds.y + bounds.h - (yBot + 2.0)));
+      ctx.fillStyle = "rgba(255,255,255,0.018)";
+      for (let y = yBot + 1.2; y < bounds.y + bounds.h - 1.2; y += 1.8) {
+        ctx.fillRect(toPxX(bounds.x + 1.4), toPxY(y), toPxX(bounds.w - 2.8), toPxY(0.05));
+      }
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(toPxX(8.0), toPxY(18.0));
+      ctx.lineTo(toPxX(38.0), toPxY(18.0));
+      ctx.stroke();
+      for (let x = 8.0; x <= 38.0; x += 3.2) {
+        ctx.beginPath();
+        ctx.moveTo(toPxX(x), toPxY(15.3));
+        ctx.lineTo(toPxX(x), toPxY(18.0));
+        ctx.stroke();
+      }
+    } else {
+      ctx.fillRect(toPxX(bounds.x), toPxY(bounds.y + 2.3), toPxX(bounds.w), toPxY(yTop - bounds.y - 2.3));
+      ctx.fillStyle = "rgba(255,255,255,0.018)";
+      for (let y = bounds.y + 3.4; y < yTop - 0.6; y += 1.8) {
+        ctx.fillRect(toPxX(bounds.x + 1.4), toPxY(y), toPxX(bounds.w - 2.8), toPxY(0.05));
+      }
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(toPxX(8.0), toPxY(6.0));
+      ctx.lineTo(toPxX(38.0), toPxY(6.0));
+      ctx.stroke();
+      for (let x = 8.0; x <= 38.0; x += 3.2) {
+        ctx.beginPath();
+        ctx.moveTo(toPxX(x), toPxY(6.0));
+        ctx.lineTo(toPxX(x), toPxY(8.7));
+        ctx.stroke();
+      }
+    }
+
+    // target row background
+    ctx.fillStyle = "rgba(255,255,255,0.018)";
+    ctx.fillRect(toPxX(x0), toPxY(yTop), toPxX(x1-x0), toPxY(lot.bayDepth));
+
+    ctx.strokeStyle = "rgba(255,255,255,0.50)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(toPxX(x0), toPxY(yTop));
+    ctx.lineTo(toPxX(x1), toPxY(yTop));
+    ctx.stroke();
+
+    ctx.lineWidth = 2.5;
+    for (let i=0;i<=lot.bays;i++){
+      const x = x0 + i*lot.bayW;
+      ctx.beginPath();
+      ctx.moveTo(toPxX(x), toPxY(yTop));
+      ctx.lineTo(toPxX(x), toPxY(yBot));
+      ctx.stroke();
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(toPxX(x0), toPxY(yBot));
+    ctx.lineTo(toPxX(x1), toPxY(yBot));
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawObstacle(o) {
+    ctx.save();
+    if (o.kind==="car") {
+      const x=toPxX(o.x), y=toPxY(o.y), w=toPxX(o.w), h=toPxY(o.h);
+
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.beginPath();
+      roundRect(ctx, x+4, y+6, w-8, h-8, 14);
+      ctx.fill();
+      ctx.restore();
+
+      const bodyGrad = ctx.createLinearGradient(x, y, x+w, y+h);
+      bodyGrad.addColorStop(0, "rgba(255,255,255,0.12)");
+      bodyGrad.addColorStop(0.2, o.paint || "rgba(156,196,255,0.42)");
+      bodyGrad.addColorStop(0.8, "rgba(20,24,30,0.88)");
+      bodyGrad.addColorStop(1, "rgba(255,255,255,0.10)");
+      ctx.fillStyle = bodyGrad;
+      ctx.strokeStyle = "rgba(255,255,255,0.22)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      roundRect(ctx, x, y, w, h, 14);
+      ctx.fill(); ctx.stroke();
+
+      ctx.fillStyle = "rgba(22,28,36,0.58)";
+      ctx.beginPath();
+      roundRect(ctx, x+w*0.17, y+h*0.15, w*0.66, h*0.70, 10);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(255,255,255,0.16)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x+w*0.5, y+h*0.18);
+      ctx.lineTo(x+w*0.5, y+h*0.82);
+      ctx.stroke();
+
+      // front / rear hint
+      ctx.fillStyle = "rgba(255,255,255,0.78)";
+      ctx.fillRect(x+w-8, y+8, 4, 10);
+      ctx.fillRect(x+w-8, y+h-18, 4, 10);
+      ctx.fillStyle = "rgba(255,90,90,0.82)";
+      ctx.fillRect(x+4, y+8, 4, 10);
+      ctx.fillRect(x+4, y+h-18, 4, 10);
+    } else if (o.kind==="island") {
+      ctx.fillStyle = o.paint || "#1f3b2f";
+      ctx.fillRect(toPxX(o.x),toPxY(o.y),toPxX(o.w),toPxY(o.h));
+      ctx.strokeStyle = "rgba(255,255,255,0.16)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(toPxX(o.x),toPxY(o.y),toPxX(o.w),toPxY(o.h));
+    } else {
+      ctx.fillStyle="rgba(255,255,255,0.07)";
+      ctx.fillRect(toPxX(o.x),toPxY(o.y),toPxX(o.w),toPxY(o.h));
+    }
+    ctx.restore();
+  }
+
+  function drawTarget() {
+    if (!target) return;
+    const x = toPxX(target.x), y = toPxY(target.y), w = toPxX(target.w), h = toPxY(target.h);
+    ctx.save();
+    ctx.fillStyle = finished ? "rgba(122,255,182,0.08)" : "rgba(156,196,255,0.045)";
+    ctx.strokeStyle = finished ? "rgba(122,255,182,0.44)" : "rgba(156,196,255,0.26)";
+    ctx.lineWidth = 1.5;
+
+    ctx.beginPath();
+    roundRect(ctx, x, y, w, h, 10);
+    ctx.fill();
+
+    // subtle corner markers instead of a big gamey P
+    const c = 12;
+    ctx.beginPath();
+    ctx.moveTo(x, y+c); ctx.lineTo(x, y); ctx.lineTo(x+c, y);
+    ctx.moveTo(x+w-c, y); ctx.lineTo(x+w, y); ctx.lineTo(x+w, y+c);
+    ctx.moveTo(x, y+h-c); ctx.lineTo(x, y+h); ctx.lineTo(x+c, y+h);
+    ctx.moveTo(x+w-c, y+h); ctx.lineTo(x+w, y+h); ctx.lineTo(x+w, y+h-c);
+    ctx.stroke();
+    ctx.restore();
+
+    // Reference line for level 1 (yellow line in picture) – only if assist or debug
+    if ((assistEl.checked || debugEl.checked) && snap.alignX) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,220,120,0.65)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8,6]);
+      ctx.beginPath();
+      ctx.moveTo(toPxX(snap.alignX), toPxY(bounds.y));
+      ctx.lineTo(toPxX(snap.alignX), toPxY(bounds.y+bounds.h));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
+
+  function drawAssistTrail() {
+    if (!assistEl.checked || !trailEl.checked || !target) return;
+    ctx.save();
+    ctx.strokeStyle = "rgba(156,196,255,0.30)";
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([7,7]);
+
+    const mid = { x: target.x+target.w/2, y: target.y+target.h/2 };
+    // simple guide: align line -> arc -> box center
+    const pts = [
+      {x: car.x, y: lot.laneY},
+      {x: snap.alignX || car.x, y: lot.laneY},
+      {x: (snap.alignX||car.x)+1.2, y: lot.rowY-0.2},
+      {x: mid.x, y: mid.y},
+    ];
+
+    ctx.beginPath();
+    ctx.moveTo(toPxX(pts[0].x), toPxY(pts[0].y));
+    for (let i=1;i<pts.length;i++) ctx.lineTo(toPxX(pts[i].x), toPxY(pts[i].y));
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function drawCar() {
+    const {cx, cy, len} = carBodyCenter();
+    const isReversing = lastGear === "R" && Math.abs(car.v) > 0.04;
+    const isBraking = keys.has(' ') || (lastGear === "D" && keys.has('s')) || (lastGear === "R" && keys.has('w'));
+    ctx.save();
+    ctx.translate(toPxX(cx), toPxY(cy));
+    ctx.rotate(car.theta);
+
+    const rearAxleX = -len/2 + car.overR;
+
+    // shadow
+    ctx.save();
+    ctx.globalAlpha = 0.30;
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.beginPath();
+    roundRect(ctx, -toPxX(len/2)+6, -toPxY(car.W/2)+8, toPxX(len)-12, toPxY(car.W)-16, 14);
+    ctx.fill();
+    ctx.restore();
+
+    // body shell
+    const bodyGrad = ctx.createLinearGradient(-toPxX(len/2), -toPxY(car.W/2), toPxX(len/2), toPxY(car.W/2));
+    bodyGrad.addColorStop(0, "rgba(228,233,240,0.16)");
+    bodyGrad.addColorStop(0.22, "rgba(90,102,118,0.18)");
+    bodyGrad.addColorStop(0.55, "rgba(28,33,40,0.96)");
+    bodyGrad.addColorStop(1, "rgba(165,175,188,0.16)");
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = "rgba(255,255,255,0.34)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    roundRect(ctx, -toPxX(len/2), -toPxY(car.W/2), toPxX(len), toPxY(car.W), 14);
+    ctx.fill(); ctx.stroke();
+
+    // front / rear form makes the body easier to read
+    ctx.fillStyle = "rgba(255,255,255,0.07)";
+    ctx.beginPath();
+    roundRect(ctx, toPxX(len*0.10), -toPxY(car.W*0.34), toPxX(len*0.30), toPxY(car.W*0.68), 10);
+    ctx.fill();
+    ctx.fillStyle = "rgba(0,0,0,0.16)";
+    ctx.beginPath();
+    roundRect(ctx, -toPxX(len*0.41), -toPxY(car.W*0.34), toPxX(len*0.20), toPxY(car.W*0.68), 10);
+    ctx.fill();
+
+    // hood and rear deck lines
+    ctx.strokeStyle = "rgba(255,255,255,0.10)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(toPxX(len*0.18), -toPxY(car.W*0.34));
+    ctx.lineTo(toPxX(len*0.18),  toPxY(car.W*0.34));
+    ctx.moveTo(-toPxX(len*0.28), -toPxY(car.W*0.30));
+    ctx.lineTo(-toPxX(len*0.28),  toPxY(car.W*0.30));
+    ctx.stroke();
+
+    // cabin / windows
+    const glassGrad = ctx.createLinearGradient(-toPxX(len*0.20), -toPxY(car.W*0.30), toPxX(len*0.24), toPxY(car.W*0.30));
+    glassGrad.addColorStop(0, "rgba(86,102,120,0.82)");
+    glassGrad.addColorStop(0.42, "rgba(18,23,31,0.88)");
+    glassGrad.addColorStop(1, "rgba(100,118,138,0.80)");
+    ctx.fillStyle = glassGrad;
+    ctx.beginPath();
+    roundRect(ctx, -toPxX(len*0.22), -toPxY(car.W*0.29), toPxX(len*0.50), toPxY(car.W*0.58), 12);
+    ctx.fill();
+
+    // split between front and rear windows
+    ctx.strokeStyle = "rgba(255,255,255,0.14)";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-toPxX(len*0.01), -toPxY(car.W*0.27));
+    ctx.lineTo(-toPxX(len*0.01),  toPxY(car.W*0.27));
+    ctx.stroke();
+
+    // windshield shine
+    const shine = ctx.createLinearGradient(-toPxX(len*0.08), -toPxY(car.W*0.26), toPxX(len*0.12), toPxY(car.W*0.04));
+    shine.addColorStop(0, "rgba(255,255,255,0.14)");
+    shine.addColorStop(1, "rgba(255,255,255,0.00)");
+    ctx.fillStyle = shine;
+    ctx.beginPath();
+    roundRect(ctx, -toPxX(len*0.16), -toPxY(car.W*0.24), toPxX(len*0.22), toPxY(car.W*0.18), 8);
+    ctx.fill();
+
+    // FRONT/REAR lights (front = +x)
+    ctx.fillStyle = "rgba(255,248,210,0.95)";
+    ctx.fillRect(toPxX(len/2)-11, -toPxY(car.W/2)+8, 7, 12);
+    ctx.fillRect(toPxX(len/2)-11,  toPxY(car.W/2)-20, 7, 12);
+
+    ctx.fillStyle = isBraking ? "rgba(255,70,70,0.98)" : "rgba(255,122,122,0.84)";
+    ctx.fillRect(-toPxX(len/2)+4, -toPxY(car.W/2)+8, 7, 12);
+    ctx.fillRect(-toPxX(len/2)+4,  toPxY(car.W/2)-20, 7, 12);
+
+    if (isReversing) {
+      ctx.fillStyle = "rgba(240,245,255,0.96)";
+      ctx.fillRect(-toPxX(len/2)+12, -toPxY(car.W/2)+8, 5, 12);
+      ctx.fillRect(-toPxX(len/2)+12,  toPxY(car.W/2)-20, 5, 12);
+    }
+
+    // front shape hint
+    ctx.fillStyle = "rgba(156,196,255,0.62)";
+    ctx.beginPath();
+    ctx.moveTo(toPxX(len/2)+2, 0);
+    ctx.lineTo(toPxX(len/2)-9, -9);
+    ctx.lineTo(toPxX(len/2)-9, 9);
+    ctx.closePath();
+    ctx.fill();
+
+    // visible rear axle for learning the pivot point
+    ctx.strokeStyle = "rgba(255,255,255,0.38)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(toPxX(rearAxleX), -toPxY(car.wheel.track * 0.30));
+    ctx.lineTo(toPxX(rearAxleX),  toPxY(car.wheel.track * 0.30));
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.42)";
+    ctx.beginPath();
+    ctx.arc(toPxX(rearAxleX), 0, 2.6, 0, TAU);
+    ctx.fill();
+
+    // wheels
+    drawWheels(len);
+
+    // mini steering wheel inside the car
+    drawMiniWheel(len);
+
+    ctx.restore();
+  }
+
+  function drawWheels(len) {
+    const track = car.wheel.track;
+    const rw = car.wheel.w, rr = car.wheel.r;
+    const rearAxle = -len/2 + car.overR;
+    const frontAxle = rearAxle + car.L;
+    const halfTrack = track/2;
+
+    function wheelRect(mx,my,ang,spin,steered=false){
+      ctx.save();
+      ctx.translate(toPxX(mx), toPxY(my));
+      ctx.rotate(ang);
+
+      ctx.fillStyle = "rgba(10,10,12,0.90)";
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      roundRect(ctx, -toPxX(rr), -toPxY(rw/2), toPxX(rr*2), toPxY(rw), 6);
+      ctx.fill(); ctx.stroke();
+
+      // clearer tread lines: they stay still when stopped and show rolling direction while moving
+      ctx.save();
+      ctx.beginPath();
+      roundRect(ctx, -toPxX(rr), -toPxY(rw/2), toPxX(rr*2), toPxY(rw), 6);
+      ctx.clip();
+
+      const moving = Math.abs(car.v) > 0.03;
+      const treadSpacing = 7;
+      const spinOffset = moving ? (spin * world.ppm * 0.48) : 0;
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
+      ctx.lineWidth = 1.25;
+
+      for (let x=-toPxX(rr)*2.1; x<toPxX(rr)*2.1; x+=treadSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(x + spinOffset, -toPxY(rw/2) + 1);
+        ctx.lineTo(x + spinOffset + 5.5, toPxY(rw/2) - 1);
+        ctx.stroke();
+      }
+
+      // one stronger line to make the roll direction easier to read
+      const guideOffset = moving ? ((spin * world.ppm * 0.48) % (treadSpacing * 2.4)) : 0;
+      ctx.strokeStyle = "rgba(245,248,255,0.42)";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(-toPxX(rr)*0.95 + guideOffset, -toPxY(rw/2) + 1);
+      ctx.lineTo(-toPxX(rr)*0.95 + guideOffset + 6.5, toPxY(rw/2) - 1);
+      ctx.stroke();
+      ctx.restore();
+
+      if (steered) {
+        ctx.strokeStyle = "rgba(160,210,255,0.22)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, -toPxY(rw*0.65));
+        ctx.lineTo(0, toPxY(rw*0.65));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    wheelRect(rearAxle, +halfTrack, 0, wheelSpin, false);
+    wheelRect(rearAxle, -halfTrack, 0, wheelSpin, false);
+    wheelRect(frontAxle, +halfTrack, car.steer, wheelSpin, true);
+    wheelRect(frontAxle, -halfTrack, car.steer, wheelSpin, true);
+  }
+
+  function drawMiniWheel(len) {
+    const wheelTurnsMax = 1.25;
+    const turns = clamp((car.steer / car.maxSteer) * wheelTurnsMax, -wheelTurnsMax, wheelTurnsMax);
+    const visualRot = (turns / wheelTurnsMax) * (Math.PI * 2 + Math.PI / 2);
+    const r = Math.max(11, world.ppm * 0.24);
+
+    ctx.save();
+    // place the wheel slightly further toward the windshield
+    ctx.translate(toPxX(len * 0.24), 0);
+    ctx.globalAlpha = 0.96;
+
+    // match the vehicle orientation: steering-wheel top points toward the car front
+    // local car forward is +x, while the wheel artwork's "top" is -y
+    ctx.save();
+    ctx.rotate(Math.PI / 2 + visualRot);
+
+    // outer shadow
+    ctx.strokeStyle = "rgba(0,0,0,0.30)";
+    ctx.lineWidth = Math.max(4, r * 0.30);
+    ctx.beginPath(); ctx.arc(0, 0, r + 1.5, 0, TAU); ctx.stroke();
+
+    // rim copy of main wheel look
+    const rimGrad = ctx.createLinearGradient(-r, -r, r, r);
+    rimGrad.addColorStop(0, "rgba(92,97,106,0.98)");
+    rimGrad.addColorStop(0.35, "rgba(38,42,50,0.98)");
+    rimGrad.addColorStop(0.7, "rgba(18,22,28,0.98)");
+    rimGrad.addColorStop(1, "rgba(96,101,110,0.98)");
+    ctx.strokeStyle = rimGrad;
+    ctx.lineWidth = Math.max(4, r * 0.28);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
+
+    // driver grips
+    ctx.fillStyle = "rgba(14,18,24,0.98)";
+    ctx.beginPath(); ctx.ellipse(-r*0.74, r*0.02, r*0.20, r*0.36, deg2rad(10), 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(r*0.74, r*0.02, r*0.20, r*0.36, deg2rad(-10), 0, TAU); ctx.fill();
+
+    // spokes
+    ctx.strokeStyle = "rgba(210,216,224,0.96)";
+    ctx.lineWidth = Math.max(2, r * 0.15);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-r*0.12, -r*0.10); ctx.lineTo(-r*0.52, -r*0.40);
+    ctx.moveTo(r*0.12, -r*0.10);  ctx.lineTo(r*0.52, -r*0.40);
+    ctx.moveTo(-r*0.08, r*0.12);  ctx.lineTo(-r*0.22, r*0.56);
+    ctx.moveTo(r*0.08, r*0.12);   ctx.lineTo(r*0.22, r*0.56);
+    ctx.stroke();
+
+    // lower spoke plate
+    ctx.fillStyle = "rgba(24,28,34,0.98)";
+    ctx.beginPath();
+    ctx.roundRect(-r*0.24, r*0.30, r*0.48, r*0.30, r*0.10);
+    ctx.fill();
+
+    // hub
+    const hubGrad = ctx.createLinearGradient(-r*0.45, -r*0.36, r*0.45, r*0.36);
+    hubGrad.addColorStop(0, "rgba(96,102,112,0.98)");
+    hubGrad.addColorStop(0.55, "rgba(42,47,55,0.98)");
+    hubGrad.addColorStop(1, "rgba(18,22,28,0.98)");
+    ctx.fillStyle = hubGrad;
+    ctx.beginPath();
+    ctx.roundRect(-r*0.46, -r*0.32, r*0.92, r*0.64, r*0.22);
+    ctx.fill();
+
+    // stronger top marker so front/back is instantly readable
+    ctx.fillStyle = "rgba(230,56,70,0.98)";
+    ctx.beginPath();
+    ctx.roundRect(-r*0.12, -r*1.08, r*0.24, r*0.34, r*0.08);
+    ctx.fill();
+
+    ctx.restore();
+    ctx.restore();
+  }
+
+
+  function drawSteeringWheelUI() {
+    if (!wheelCtx || !wheelCanvas) return;
+    const w = wheelCanvas.width, h = wheelCanvas.height;
+    const c = wheelCtx;
+    c.clearRect(0,0,w,h);
+    const cx = w/2, cy = 138;
+    const r = 76;
+    const wheelTurnsMax = 1.25; // 1x komplett + weiter bis 3/9 Uhr
+    const turns = clamp((car.steer / car.maxSteer) * wheelTurnsMax, -wheelTurnsMax, wheelTurnsMax);
+    const stopGlow = Math.abs(turns) > (wheelTurnsMax - 0.06);
+    const visualRot = (turns / wheelTurnsMax) * (Math.PI * 2 + Math.PI / 2);
+
+    c.save();
+    c.fillStyle = "rgba(8,12,18,0.88)";
+    c.fillRect(0,0,w,h);
+    c.translate(cx, cy);
+    c.textAlign = "center";
+
+    c.fillStyle = "rgba(255,255,255,0.92)";
+    c.font = "700 14px system-ui";
+    c.fillText("Lenkrad", 0, -100);
+
+    c.save();
+    c.translate(0, -62);
+    c.strokeStyle = "rgba(255,255,255,0.12)";
+    c.lineWidth = 12;
+    c.lineCap = "round";
+    c.beginPath(); c.moveTo(-88,0); c.lineTo(88,0); c.stroke();
+    c.fillStyle = "rgba(255,255,255,0.70)";
+    c.font = "800 12px system-ui";
+    c.fillText("L", -108, 4);
+    c.fillText("R", 108, 4);
+    c.fillStyle = stopGlow ? "rgba(255,210,122,0.98)" : "rgba(156,196,255,0.98)";
+    c.beginPath(); c.arc((turns / wheelTurnsMax) * 88, 0, 9, 0, TAU); c.fill();
+    c.restore();
+
+    c.save();
+    c.rotate(visualRot);
+
+    const rimGrad = c.createLinearGradient(-r, -r, r, r);
+    rimGrad.addColorStop(0, "rgba(92,97,106,1)");
+    rimGrad.addColorStop(0.35, "rgba(38,42,50,1)");
+    rimGrad.addColorStop(0.7, "rgba(18,22,28,1)");
+    rimGrad.addColorStop(1, "rgba(96,101,110,1)");
+
+    c.strokeStyle = "rgba(0,0,0,0.42)";
+    c.lineWidth = 24;
+    c.beginPath(); c.arc(0, 0, r + 2, 0, TAU); c.stroke();
+
+    c.strokeStyle = rimGrad;
+    c.lineWidth = 18;
+    c.beginPath(); c.arc(0, 0, r, 0, TAU); c.stroke();
+
+    c.strokeStyle = "rgba(255,255,255,0.07)";
+    c.lineWidth = 4;
+    c.beginPath(); c.arc(0, 0, r-3, deg2rad(210), deg2rad(330)); c.stroke();
+
+    c.fillStyle = "rgba(14,18,24,0.98)";
+    c.beginPath(); c.ellipse(-55, 2, 15, 27, deg2rad(10), 0, TAU); c.fill();
+    c.beginPath(); c.ellipse(55, 2, 15, 27, deg2rad(-10), 0, TAU); c.fill();
+
+    c.strokeStyle = "rgba(188,194,203,0.96)";
+    c.lineWidth = 12;
+    c.lineCap = "round";
+    c.beginPath();
+    c.moveTo(-12,-10); c.lineTo(-42,-38);
+    c.moveTo(12,-10); c.lineTo(42,-38);
+    c.moveTo(-10,12); c.lineTo(-24,54);
+    c.moveTo(10,12); c.lineTo(24,54);
+    c.stroke();
+
+    c.fillStyle = "rgba(26,31,37,0.98)";
+    c.beginPath();
+    c.roundRect(-22, 29, 44, 28, 12);
+    c.fill();
+
+    const hubGrad = c.createLinearGradient(-36, -26, 36, 26);
+    hubGrad.addColorStop(0, "rgba(95,101,111,1)");
+    hubGrad.addColorStop(0.55, "rgba(44,49,57,1)");
+    hubGrad.addColorStop(1, "rgba(22,27,33,1)");
+    c.fillStyle = hubGrad;
+    c.beginPath();
+    c.roundRect(-36, -25, 72, 54, 18);
+    c.fill();
+
+    c.fillStyle = "rgba(255,255,255,0.12)";
+    c.beginPath();
+    c.roundRect(-17, -8, 34, 16, 8);
+    c.fill();
+
+    c.fillStyle = stopGlow ? "rgba(255,210,122,0.98)" : "rgba(230,56,70,0.98)";
+    c.beginPath();
+    c.roundRect(-5, -r - 8, 10, 18, 4);
+    c.fill();
+    c.restore();
+
+    c.fillStyle = "rgba(255,255,255,0.92)";
+    c.font = "700 13px system-ui";
+    const side = turns < -0.02 ? "L" : (turns > 0.02 ? "R" : "0");
+    const amt = Math.abs(turns).toFixed(2).replace(".", ",");
+    c.fillText(side === "0" ? "0,00 U" : `${side} ${amt} U`, 0, 110);
+    c.font = "600 11px system-ui";
+    c.fillStyle = stopGlow ? "rgba(255,210,122,0.96)" : "rgba(255,255,255,0.58)";
+    c.fillText(stopGlow ? "Max: 1x rum + bis 3 / 9 Uhr" : "Lenkrad: 1x rum + bis 3 / 9 Uhr", 0, 128);
+    c.restore();
+  }
+
+  function drawOverlay() {
+    if (!overlayEl.checked) return;
+    const dF = distanceInDirection(car.theta, 7.0);
+    const dR = distanceInDirection(car.theta + Math.PI, 7.0);
+    const dL = distanceInDirection(car.theta - Math.PI/2, 7.0);
+    const dRi= distanceInDirection(car.theta + Math.PI/2, 7.0);
+
+    const rect = canvas.getBoundingClientRect();
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.font = "12px system-ui";
+
+    const boxX = 14, boxY = rect.height - 118;
+    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    ctx.strokeStyle = "rgba(255,255,255,0.14)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    roundRect(ctx, boxX, boxY, 200, 96, 12);
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = "rgba(255,255,255,0.78)";
+    ctx.fillText("Abstände (ca.)", boxX+12, boxY+20);
+
+    function line(label, val, yy) {
+      const warn = val < 0.7;
+      ctx.fillStyle = warn ? "rgba(255,122,122,0.92)" : "rgba(255,255,255,0.75)";
+      ctx.fillText(`${label}: ${val.toFixed(2)} m`, boxX+12, yy);
+    }
+    line("Vorne", dF, boxY+42);
+    line("Hinten", dR, boxY+60);
+    line("Links", dL, boxY+78);
+    line("Rechts", dRi, boxY+96);
+    ctx.restore();
+  }
+
+  function drawFinishOverlay() {
+    if (!finished) return;
+    const rect = canvas.getBoundingClientRect();
+    const sc = scoreDetails();
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fillRect(0,0,rect.width,rect.height);
+    ctx.fillStyle = "#e8eef7";
+    ctx.font = "800 26px system-ui";
+    ctx.fillText("✅ Eingeparkt!", 20, 48);
+    ctx.font = "14px system-ui";
+    ctx.fillText(`Score ${sc.total} (${sc.stars}★) – R Reset / 🎲 Random`, 20, 74);
+    ctx.restore();
+  }
+
+  function draw() {
+    const rect = canvas.getBoundingClientRect();
+    ctx.clearRect(0,0,rect.width,rect.height);
+    drawAsphalt();
+    drawBounds();
+    drawParallelStreetScene();
+    drawParkingRow();
+    drawTarget();
+
+    for (const o of obstacles) drawObstacle(o);
+
+    drawAssistTrail();
+    drawCar();
+    drawOverlay();
+    drawFinishOverlay();
+
+    if (debugEl.checked) {
+      const p = carPoly();
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,122,122,0.55)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(toPxX(p[0].x), toPxY(p[0].y));
+      for (let i=1;i<p.length;i++) ctx.lineTo(toPxX(p[i].x), toPxY(p[i].y));
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // ---------- Loop ----------
+  let lastT = performance.now();
+  function step(now) {
+    const dt = Math.min(0.03, (now - lastT)/1000);
+    lastT = now;
+    if (!paused) update(dt);
+    draw();
+    drawSteeringWheelUI();
+    requestAnimationFrame(step);
+  }
+
+  // ---------- Boot ----------
+  resize();
+  reset(1);
+  requestAnimationFrame(step);
+
+})();
+</script>
+</body>
+</html>
